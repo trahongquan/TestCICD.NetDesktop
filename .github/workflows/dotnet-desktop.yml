@@ -1,28 +1,34 @@
 
 name: .NET Core Desktop
 
+# Sự kiện để kích hoạt workflow
 on:
   push:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
 
+# Cấu hình công việc chính của workflow
 jobs:
 
   build:
 
+    # Thiết lập chiến lược chạy dựa trên các cấu hình Debug và Release
     strategy:
       matrix:
         configuration: [Debug, Release]
 
+    # Chạy workflow trên hệ điều hành Windows
     runs-on: windows-latest
 
+    # Biến môi trường
     env:
       Solution_Name: QLTTBCNTT-WinForm.sln
       Test_Project_Path: QLTTBCNTT-WinForm
       Wap_Project_Directory: QLTTBCNTT-WinForm
       Wap_Project_Path: QLTTBCNTT-WinForm/QLTTBCNTT-WinForm.csproj
 
+    # Các bước của workflow
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -39,17 +45,19 @@ jobs:
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v1.0.2
 
-    # Execute all unit tests in the solution
+    # Execute all unit tests in the solution: Test solution
     - name: Execute unit tests
       run: dotnet test $env:Test_Project_Path
 
     # Restore the application to populate the obj folder with RuntimeIdentifiers
+    # Khôi phục ứng dụng để tạo thư mục obj với RuntimeIdentifiers
     - name: Restore the application
       run: msbuild $env:Solution_Name /t:Restore /p:Configuration=$env:Configuration
       env:
         Configuration: ${{ matrix.configuration }}
 
-    # Decode the base 64 encoded pfx and save the Signing_Certificate
+    # Decode the base 64 encoded pfx and save the Signing_Certificate 
+    # Giải mã pfx được mã hóa base 64 và lưu Signing_Certificate
     - name: Decode the pfx
       run: |
         $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.Base64_Encoded_Pfx }}")
@@ -57,6 +65,7 @@ jobs:
         [IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
 
     # Create the app package by building and packaging the Windows Application Packaging project
+    # Tạo gói ứng dụng bằng cách xây dựng và đóng gói dự án Windows Application Packaging
     - name: Create the app package
       run: msbuild $env:Wap_Project_Path /p:Configuration=$env:Configuration /p:UapAppxPackageBuildMode=$env:Appx_Package_Build_Mode /p:AppxBundle=$env:Appx_Bundle /p:PackageCertificateKeyFile=GitHubActionsWorkflow.pfx /p:PackageCertificatePassword=${{ secrets.Pfx_Key }}
       env:
@@ -70,7 +79,7 @@ jobs:
       run: Remove-Item -path $env:Wap_Project_Directory\GitHubActionsWorkflow.pfx
 
     # Thêm một bài kiểm tra đơn giản
-    - name: Run custom test
+    - name: Run Custom test
       run: |
         echo "Running custom test..."
         # Thêm lệnh kiểm tra tại đây (ví dụ: dotnet test $env:Test_Project_Path)
